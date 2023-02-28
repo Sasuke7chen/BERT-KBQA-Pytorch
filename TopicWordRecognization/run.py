@@ -5,9 +5,9 @@ from torch.utils.data import DataLoader
 from transformers import BertTokenizer, BertConfig
 from transformers import AdamW, get_linear_schedule_with_warmup
 from tqdm import tqdm
-from utils import NerDataset, NerMetrics
-from utils import set_seed, get_entities
-from model import BertNerModel
+from .utils import NerDataset, NerMetrics
+from .utils import set_seed, get_entities
+from .model import BertNerModel
 
 
 logger = logging.getLogger()

@@ -1,6 +1,7 @@
 import unicodedata
 import re
 import Levenshtein
+import json
 
 def entity_linking(mention2entity_dict, input_mention):
     if input_mention == '': return []
@@ -61,3 +62,11 @@ def unify_char_format(string):
     string = string.replace('【', '[').replace('】', ']')
     string = string.lower()
     return string
+
+if __name__ == '__main__':
+    mention2entity_clean_path = './data/mention2entity.json'
+    with open(mention2entity_clean_path, 'r', encoding='utf-8') as f:
+        mention2entity_dict = json.load(f)
+    input_mention = '史蒂芬霍金'
+    rela_ents = entity_linking(mention2entity_dict, input_mention)
+    print('匹配到知识库中的候选实体：', rela_ents)

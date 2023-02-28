@@ -5,9 +5,9 @@ from torch.utils.data import DataLoader
 from transformers import BertTokenizer, BertConfig
 from transformers import AdamW, get_linear_schedule_with_warmup
 from tqdm import tqdm
-from utils import ClsDataset, ClsMetrics
-from utils import set_seed
-from model import BertClsModel
+from .utils import ClsDataset, ClsMetrics
+from .utils import set_seed
+from .model import BertClsModel
 
 logger = logging.getLogger()
 
@@ -86,19 +86,35 @@ def predict(model_path, input_text1, input_text2):
     model = BertClsModel.from_pretrained(model_path, config=config)
     model.to(device)
     model.eval()
-    features = tokenizer.encode_plus(
-            input_text1,
-            text_pair=input_text2,
-            max_length=max_seq_len,
-            truncation=True,
-            return_token_type_ids=True,
-        )
-    input_ids = torch.tensor(features['input_ids'], dtype=torch.long).unsqueeze(0).to(device) # [batch_size=1, num_labels]
-    token_type_ids = torch.tensor(features['token_type_ids'], dtype=torch.long).unsqueeze(0).to(device)
     
-    logits = model(input_ids, token_type_ids=token_type_ids)
-    pred_label = logits.argmax(axis=-1).cpu().numpy()[0]
-    return id2label[pred_label]
+    if isinstance(input_text1, str) and isinstance(input_text2, str):
+        features = tokenizer.encode_plus(
+                input_text1,
+                text_pair=input_text2,
+                max_length=max_seq_len,
+                truncation=True,
+                return_token_type_ids=True,
+            )
+        input_ids = torch.tensor(features['input_ids'], dtype=torch.long).unsqueeze(0).to(device) # [batch_size=1, num_labels]
+        token_type_ids = torch.tensor(features['token_type_ids'], dtype=torch.long).unsqueeze(0).to(device)
+        logits = model(input_ids, token_type_ids=token_type_ids)
+        pred_label = logits.argmax(axis=-1).cpu().numpy()[0]
+        return id2label[pred_label]
+    elif isinstance(input_text1, list) and isinstance(input_text2, list):
+        test_ds = ClsDataset(data_path=dev_path, label2id=label2id, max_seq_len=max_seq_len, tokenizer=tokenizer, 
+                            input_text1=input_text1, input_text2=input_text2, read_from_file=False)
+        test_loader = DataLoader(test_ds, batch_size=per_gpu_batch_size, shuffle=False)
+        pred_results = []
+        for batch in test_loader:
+            batch = tuple(t.to(device) for t in batch)
+            input_ids, token_type_ids, _ = batch
+            logits = model(input_ids, token_type_ids=token_type_ids)
+            pred_labels = logits.argmax(axis=-1).cpu().numpy().tolist()
+            pred_results.extend([id2label[label] for label in pred_labels])
+        return pred_results
+    else:
+        print('input_text1 and input_text2 must be str or list')
+
     
 model_name = '/data/xiancai/cxc/myRepo/pretrains/bert-base-chinese'
 train_path = './data/train.tsv'
@@ -132,7 +148,9 @@ if __name__ == '__main__':
     # input_text2 = '若泽·萨尔内总统'
     # input_text1 = '闻一多全集是哪个出版社出版的？'
     # input_text2 = '闻一多全集出版社'
-    input_text1 = '闻一多全集是哪个出版社出版的？'
-    input_text2 = '闻一多全集出版时间'
+    # input_text1 = '闻一多全集是哪个出版社出版的？'
+    # input_text2 = '闻一多全集出版时间'
+    input_text1 = ['若泽·萨尔内的总统是谁？', '闻一多全集是哪个出版社出版的？', '闻一多全集是哪个出版社出版的？', ]
+    input_text2 = ['若泽·萨尔内总统', '闻一多全集出版社', '闻一多全集出版时间', ]
     pred_results = predict(pred_model_path, input_text1, input_text2)
     print(pred_results)

@@ -6,8 +6,9 @@ import random
 from torch.utils.data import Dataset
     
 class ClsDataset(Dataset):
-    def __init__(self, data_path, label2id, max_seq_len, tokenizer):
-        self.examples = self._read_tsv(data_path)
+    def __init__(self, data_path, label2id, max_seq_len, tokenizer, input_text1=None, input_text2=None, read_from_file=True):
+        if read_from_file: self.examples = self._read_tsv(data_path)
+        else: self.examples = self._read_test_data(input_text1, input_text2)
         self.label2id = label2id
         self.max_seq_len = max_seq_len
         self.tokenizer = tokenizer
@@ -22,6 +23,13 @@ class ClsDataset(Dataset):
     
     def __len__(self):
         return len(self.examples)
+    
+    @staticmethod
+    def _read_test_data(input_text1, input_text2):
+        all_samples = []
+        for text1, text2 in zip(input_text1, input_text2):
+            all_samples.append({'text1': text1, 'text2': text2, 'label': '0'})
+        return all_samples
     
     @staticmethod
     def _read_tsv(data_path):
